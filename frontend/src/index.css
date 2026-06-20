@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-black: #0a0a0a;
+  --color-brand-blue: #0052FF;
+  --color-brand-border: #e5e7eb;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
