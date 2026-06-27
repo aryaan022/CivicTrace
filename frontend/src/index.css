@@ -1,8 +1,86 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-black: #0a0a0a;
-  --color-brand-blue: #0052FF;
-  --color-brand-border: #e5e7eb;
-  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
 }
+
+body {
+  font-family: var(--font-sans);
+  background-color: #0b0f19; /* Sleek Slate-Dark GovTech Background */
+  color: #f1f5f9;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for premium finish */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+/* Professional 3D Hover tilt wrapper */
+.perspective-container {
+  perspective: 1200px;
+}
+
+/* Float Animations for card stacking simulation if used */
+@keyframes floatFront {
+  0%, 100% {
+    transform: rotateX(12deg) rotateY(-12deg) rotateZ(1deg) translate3d(0, 0, 40px);
+    box-shadow: -20px 30px 40px -15px rgba(0, 0, 0, 0.6);
+  }
+  50% {
+    transform: rotateX(12deg) rotateY(-12deg) rotateZ(1deg) translate3d(0, -6px, 46px);
+    box-shadow: -25px 35px 45px -10px rgba(0, 0, 0, 0.7);
+  }
+}
+@keyframes floatMid {
+  0%, 100% {
+    transform: rotateX(12deg) rotateY(-12deg) rotateZ(1deg) translate3d(20px, -24px, 10px);
+    box-shadow: -15px 20px 30px -10px rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    transform: rotateX(12deg) rotateY(-12deg) rotateZ(1deg) translate3d(20px, -30px, 15px);
+    box-shadow: -20px 25px 35px -5px rgba(0, 0, 0, 0.6);
+  }
+}
+@keyframes floatBack {
+  0%, 100% {
+    transform: rotateX(12deg) rotateY(-12deg) rotateZ(1deg) translate3d(40px, -48px, -20px);
+    box-shadow: -10px 12px 20px -8px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    transform: rotateX(12deg) rotateY(-12deg) rotateZ(1deg) translate3d(40px, -54px, -15px);
+    box-shadow: -15px 18px 25px -5px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.animate-3d-front {
+  animation: floatFront 6s ease-in-out infinite;
+}
+.animate-3d-mid {
+  animation: floatMid 6.5s ease-in-out infinite;
+}
+.animate-3d-back {
+  animation: floatBack 7s ease-in-out infinite;
+}
+
+@keyframes spinCube {
+  0% { transform: rotateX(15deg) rotateY(0deg); }
+  50% { transform: rotateX(45deg) rotateY(180deg); }
+  100% { transform: rotateX(15deg) rotateY(360deg); }
+}
+
+.animate-spin-cube {
+  animation: spinCube 12s linear infinite;
+  transform-style: preserve-3d;
+}
+
