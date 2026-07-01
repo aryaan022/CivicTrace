@@ -1,151 +1,178 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Overview from './Overview';
 import ProjectsList from './ProjectsList';
 import DisputesList from './DisputesList';
 import RaiseDisputeForm from './RaiseDisputeForm';
 
-// Sample mock data showcasing the 50% dispute automatic halts in action
-const INITIAL_PROJECTS = [
-  {
-    id: "p1",
-    title: "Panchayat Ghar Renovation",
-    description: "Renovation and waterproofing of the village panchayat administrative building.",
-    budget: 500000,
-    status: "Active",
-    tranchesReleased: "2/3",
-    disputesCount: 2,
-    totalVotes: 8,
-  },
-  {
-    id: "p2",
-    title: "Solar Street Lights Installation",
-    description: "Installing 50 LED solar streetlights across main village pathways.",
-    budget: 250000,
-    status: "Halted", // Automatic Halt triggered!
-    tranchesReleased: "1/3",
-    disputesCount: 7, // High disputes trigger halt
-    totalVotes: 19,
-  },
-  {
-    id: "p3",
-    title: "Primary School Drinking Water Plant",
-    description: "Setup of community RO drinking water filter system inside the school campus.",
-    budget: 180000,
-    status: "Completed",
-    tranchesReleased: "3/3",
-    disputesCount: 0,
-    totalVotes: 0,
-  }
-];
-
-const INITIAL_DISPUTES = [
-  {
-    id: "d1",
-    projectId: "p2",
-    projectTitle: "Solar Street Lights Installation",
-    title: "Substandard battery quality",
-    description: "The batteries supplied are generic and drain in 2 hours instead of lasting all night. Needs inspection.",
-    citizenName: "Amit Kumar",
-    upvotes: 12,
-    hasVoted: false,
-    status: "Active Review"
-  },
-  {
-    id: "d2",
-    projectId: "p2",
-    projectTitle: "Solar Street Lights Installation",
-    title: "Incorrect coordinates of pole installations",
-    description: "5 poles have been installed inside private farmlands instead of public streets.",
-    citizenName: "Sunita Devi",
-    upvotes: 7,
-    hasVoted: false,
-    status: "Active Review"
-  },
-  {
-    id: "d3",
-    projectId: "p1",
-    projectTitle: "Panchayat Ghar Renovation",
-    title: "Delay in roof tiling milestone",
-    description: "Roof concrete layer was completed 3 weeks ago but tiling works are still paused.",
-    citizenName: "Rakesh Singh",
-    upvotes: 3,
-    hasVoted: false,
-    status: "Resolved"
-  }
-];
-
 export default function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview'); // overview, projects, disputes, raise
-  const [projects, setProjects] = useState(INITIAL_PROJECTS);
-  const [disputes, setDisputes] = useState(INITIAL_DISPUTES);
+  const [projects, setProjects] = useState([]);
+  const [disputes, setDisputes] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // Form state for raising a new dispute
   const [newDispute, setNewDispute] = useState({
-    projectId: "p1",
+    projectId: "",
     title: "",
     description: ""
   });
 
-  // Calculate statistics
+  // Fetch real data from the backend APIs
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      // Fetch projects in the user's village
+      const projectsRes = await fetch("/api/user/projects", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      const projectsData = await projectsRes.json();
+
+      // Fetch active disputes in the user's village
+      const ticketsRes = await fetch("/api/user/tickets", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      const ticketsData = await ticketsRes.json();
+
+      if (projectsRes.ok) {
+        const formattedProjects = (projectsData.projects || []).map(p => ({
+          id: p._id,
+          title: p.title,
+          description: p.description,
+          budget: p.totalBudget,
+          status: p.status,
+          contractorName: p.contractorName,
+          disputesCount: p.disputesCount || 0,
+          milestones: (p.milestones || []).map(m => ({
+            id: m._id,
+            title: m.title,
+            amount: m.amount,
+            status: m.status,
+            proofUrl: m.proofUrl
+          }))
+        }));
+        setProjects(formattedProjects);
+
+        // Pre-select first project for dispute creation if not already set
+        if (formattedProjects.length > 0) {
+          setNewDispute(prev => ({
+            ...prev,
+            projectId: prev.projectId || formattedProjects[0].id
+          }));
+        }
+      }
+
+      if (ticketsRes.ok) {
+        const formattedDisputes = (ticketsData.tickets || []).map(t => {
+          const currentUserId = user?.id || user?._id;
+          const hasVoted = t.upvotes?.some(id => id.toString() === currentUserId?.toString());
+          
+          return {
+            id: t._id,
+            projectId: t.project?._id,
+            projectTitle: t.project?.title || "Panchayat Work",
+            title: t.title,
+            description: t.description,
+            citizenName: t.citizen?.username || "Citizen Auditor",
+            upvotes: t.upvotes?.length || 0,
+            hasVoted: !!hasVoted,
+            status: t.status
+          };
+        });
+        setDisputes(formattedDisputes);
+      }
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  // Handle upvoting from the database
+  const handleUpvote = async (disputeId) => {
+    try {
+      const response = await fetch(`/api/user/tickets/${disputeId}/upvote`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        }
+      });
+      if (response.ok) {
+        // Real-time synchronization of state from server
+        fetchDashboardData();
+      } else {
+        const data = await response.json();
+        alert(data.message || "Failed to record vote");
+      }
+    } catch (err) {
+      console.error("Upvote API error:", err);
+    }
+  };
+
+  // Submit raised dispute to backend
+  const handleCreateDisputeSubmit = async (e) => {
+    e.preventDefault();
+    if (!newDispute.projectId || !newDispute.title || !newDispute.description) {
+      alert("All fields are required to raise a dispute.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/user/tickets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({
+          projectId: newDispute.projectId,
+          title: newDispute.title,
+          description: newDispute.description
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert("Dispute submitted successfully!");
+        fetchDashboardData();
+        
+        // Reset form details
+        setNewDispute(prev => ({
+          projectId: projects[0]?.id || "",
+          title: "",
+          description: ""
+        }));
+        
+        // Transition view back to disputes list
+        setActiveTab('disputes');
+      } else {
+        alert(data.message || "Failed to submit dispute");
+      }
+    } catch (err) {
+      console.error("Submit dispute error:", err);
+      alert("Connection failure trying to raise dispute");
+    }
+  };
+
+  // Calculate statistics from database state
   const totalBudget = projects.reduce((acc, p) => acc + p.budget, 0);
   const haltedProjectsCount = projects.filter(p => p.status === "Halted").length;
   const activeDisputesCount = disputes.filter(d => d.status !== "Resolved").length;
 
-  const handleUpvote = (disputeId) => {
-    setDisputes(prev => prev.map(d => {
-      if (d.id === disputeId) {
-        return {
-          ...d,
-          upvotes: d.hasVoted ? d.upvotes - 1 : d.upvotes + 1,
-          hasVoted: !d.hasVoted
-        };
-      }
-      return d;
-    }));
-  };
-
-  const handleCreateDisputeSubmit = (e) => {
-    e.preventDefault();
-    if (!newDispute.title || !newDispute.description) return;
-
-    const chosenProj = projects.find(p => p.id === newDispute.projectId);
-
-    const disputeObj = {
-      id: `d${disputes.length + 1}`,
-      projectId: newDispute.projectId,
-      projectTitle: chosenProj ? chosenProj.title : "General Audit",
-      title: newDispute.title,
-      description: newDispute.description,
-      citizenName: user?.username || "Citizen Auditor",
-      upvotes: 1,
-      hasVoted: true,
-      status: "Active Review"
-    };
-
-    setDisputes([disputeObj, ...disputes]);
-    
-    // Update project dispute count
-    setProjects(prev => prev.map(p => {
-      if (p.id === newDispute.projectId) {
-        return {
-          ...p,
-          disputesCount: p.disputesCount + 1
-        };
-      }
-      return p;
-    }));
-
-    // Reset Form
-    setNewDispute({
-      projectId: "p1",
-      title: "",
-      description: ""
-    });
-
-    // Redirect to disputes tab
-    setActiveTab('disputes');
-  };
+  if (loading) {
+    return (
+      <div className="flex-1 flex justify-center items-center bg-[#0b0f19] text-slate-400 text-xs uppercase tracking-widest min-h-[400px]">
+        <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping mr-2.5"></span>
+        Syncing Citizen Ledger...
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col md:flex-row bg-[#0b0f19] text-slate-100 max-w-6xl w-full mx-auto p-4 md:p-6 gap-6 relative z-10">

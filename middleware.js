@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const User = require("./models/User");
 
 
 module.exports.isLoggedIn=(req,res,next)=>{
@@ -14,4 +15,29 @@ module.exports.isLoggedIn=(req,res,next)=>{
     } catch (error) {
         return res.status(403).json({message:"Invalid or expired token"})
     }
-}
+    
+};
+
+module.exports.isVillageHead=async(req,res,next)=>{
+    const user = await User.findById(req.user.id);
+    if(!user){
+        return res.status(404).json({message:"User not found"});
+    }
+    if(user.role!= "VillageHead"){
+        return res.status(403).json({message:"Unauthorized"})
+    }
+    next();
+};
+
+
+// for admin
+module.exports.isAdmin = async (req, res, next) => {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+    if (user.role !== "Admin") {
+        return res.status(403).json({ message: "Unauthorized: Requires Admin role" });
+    }
+    next();
+};

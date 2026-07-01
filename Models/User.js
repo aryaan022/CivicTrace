@@ -35,6 +35,11 @@ const UserSchema = new Schema({
         type:String,
         required:true,
         unique:true
+    },
+    village: {
+        type: Schema.Types.ObjectId,
+        ref: "Village",
+        required: false // Optional for District Admins, but will be filled for Citizens/VillageHeads
     }
     
 })

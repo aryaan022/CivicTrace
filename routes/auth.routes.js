@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User.js");
+const Village = require("../models/Village"); 
 const bcrypt = require("bcrypt");
 const jwt = require ("jsonwebtoken");
 const { validateAadhaar, hashAadhaar } = require("../utils/aadhar");
@@ -9,7 +10,7 @@ const { validateAadhaar, hashAadhaar } = require("../utils/aadhar");
 
 router.post("/register", async (req, res) => {
     try{
-        const{email,username,name,phone,password,aadhaar}=req.body;
+        const{email,username,name,phone,password,aadhaar,villageId}=req.body;
 
         if(!email ||!username || !name || !phone || !password){
             return res.status(400).json({message:"All fields are required"});
@@ -44,9 +45,14 @@ router.post("/register", async (req, res) => {
             phone,
             password:hashedPassword,
             role:"Citizen",
-            adhaarHash
+            adhaarHash,
+            village: villageId ,
         });
         await user.save();
+
+        if (villageId) {
+            await Village.findByIdAndUpdate(villageId, { $inc: { registeredCitizensCount: 1 } });
+        }
 
         const token = jwt.sign({id: user._id,username:user.username,role:user.role},process.env.JWT_SECRET,{expiresIn:"1d"});
         res.status(201).json({message:"User created successfully",token});

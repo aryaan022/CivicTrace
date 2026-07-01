@@ -8,7 +8,8 @@ import Security from './components/homepage/Security';
 import Faq from './components/homepage/Faq';
 import LoginModal from './components/homepage/LoginModal';
 import RegisterModal from './components/homepage/RegisterModal';
-import Dashboard from './components/Userdashboard/Dashboard';
+import CitizenDashboard from './components/Userdashboard/Dashboard';
+import VillageHeadDashboard from './components/VillageHeadDashboard/Dashboard';
 
 function App() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -137,7 +138,11 @@ function App() {
       />
 
       {user ? (
-        <Dashboard user={user} onLogout={handleLogout} />
+        user.role === "VillageHead" ? (
+          <VillageHeadDashboard user={user} onLogout={handleLogout} />
+        ) : (
+          <CitizenDashboard user={user} onLogout={handleLogout} />
+        )
       ) : (
         <>
           {/* Hero Section with Consensus Simulation */}
