@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
-
-const MOCK_VILLAGES = [
-  { id: "v1", name: "Rampur Panchayat", district: "Patna" },
-  { id: "v2", name: "Sonpur Society", district: "Saran" },
-  { id: "v3", name: "Pipili Village", district: "Puri" }
-];
+import React, { useState, useEffect } from 'react';
 
 export default function RegisterModal({ isOpen, onClose, onSubmit }) {
+  const [villages, setVillages] = useState([]);
+  const [loadingVillages, setLoadingVillages] = useState(false);
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -14,15 +10,37 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
     phone: "",
     aadhaar: "",
     role: "Citizen",
-    villageId: "v1",
+    villageId: "",
     password: ""
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingVillages(true);
+      fetch("/api/villages")
+        .then(res => res.json())
+        .then(data => {
+          if (data.villages && data.villages.length > 0) {
+            setVillages(data.villages);
+            setForm(prev => ({
+              ...prev,
+              villageId: prev.villageId || data.villages[0]._id
+            }));
+          }
+        })
+        .catch(err => {
+          console.error("Failed to load villages:", err);
+        })
+        .finally(() => {
+          setLoadingVillages(false);
+        });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Aadhaar number input filter (only digits, max length 12)
     if (name === "aadhaar") {
       const digits = value.replace(/\D/g, '').slice(0, 12);
       setForm(prev => ({ ...prev, [name]: digits }));
@@ -37,7 +55,7 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md p-6 shadow-2xl rounded-2xl text-left relative max-h-[90vh] overflow-y-auto">
         
         {/* Close Button */}
@@ -50,8 +68,10 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
 
         {/* Modal Header */}
         <div className="pb-4 border-b border-slate-800/80 mb-5">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-white">Create Auditor Account</h3>
-          <span className="text-[9px] text-slate-400 font-bold block mt-0.5 uppercase tracking-wide">Register verified citizen or administrator profile</span>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-white">Create Verified Identity</h3>
+          <span className="text-[9px] text-slate-400 font-bold block mt-0.5 uppercase tracking-wide">
+            Register for cryptographic public auditing
+          </span>
         </div>
 
         {/* Form */}
@@ -64,8 +84,8 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
               <input 
                 type="text" 
                 name="name"
-                className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-650 focus:outline-none focus:border-blue-500" 
-                placeholder="John Doe"
+                className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-600 focus:outline-none focus:border-blue-500" 
+                placeholder="Ramesh Kumar"
                 value={form.name}
                 onChange={handleChange}
                 required
@@ -76,8 +96,8 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
               <input 
                 type="text" 
                 name="username"
-                className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-650 focus:outline-none focus:border-blue-500" 
-                placeholder="johndoe"
+                className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-600 focus:outline-none focus:border-blue-500" 
+                placeholder="ramesh99"
                 value={form.username}
                 onChange={handleChange}
                 required
@@ -92,8 +112,8 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
               <input 
                 type="email" 
                 name="email"
-                className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-650 focus:outline-none focus:border-blue-500" 
-                placeholder="john@example.com"
+                className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-600 focus:outline-none focus:border-blue-500" 
+                placeholder="ramesh@example.com"
                 value={form.email}
                 onChange={handleChange}
                 required
@@ -104,7 +124,7 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
               <input 
                 type="tel" 
                 name="phone"
-                className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-650 focus:outline-none focus:border-blue-500" 
+                className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-600 focus:outline-none focus:border-blue-500" 
                 placeholder="9876543210"
                 value={form.phone}
                 onChange={handleChange}
@@ -116,14 +136,14 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
           {/* Row 3: Aadhaar */}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-              Aadhaar Number (12-digit)
+              Aadhaar Number (12-digit Verhoeff format)
             </label>
             <input 
               type="text" 
               name="aadhaar"
               maxLength="12"
               className="w-full px-3.5 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-mono tracking-wider focus:outline-none focus:border-blue-500" 
-              placeholder="0000 0000 0000"
+              placeholder="e.g. 3675 9834 6012"
               value={form.aadhaar}
               onChange={handleChange}
               required
@@ -133,41 +153,50 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
           {/* Row 4: Role & Village Assignment */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Assign Role</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Auditor Role</label>
               <select 
                 name="role"
                 className="w-full px-3 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950 text-slate-100 font-medium focus:outline-none focus:border-blue-500"
                 value={form.role}
                 onChange={handleChange}
               >
-                <option value="Citizen">Citizen</option>
-                <option value="VillageHead">Village Head (Panchayat)</option>
+                <option value="Citizen">Citizen Auditor</option>
+                <option value="VillageHead">Village Head (Sarpanch)</option>
                 <option value="Admin">District Administrator</option>
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Assign Village (Jurisdiction)</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Panchayat Jurisdiction
+              </label>
               <select 
                 name="villageId"
                 className="w-full px-3 py-2 border border-slate-800 rounded-lg text-xs bg-slate-950 text-slate-100 font-medium focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 value={form.villageId}
                 onChange={handleChange}
                 disabled={form.role === "Admin"}
+                required={form.role !== "Admin"}
               >
-                {MOCK_VILLAGES.map(v => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
+                {loadingVillages ? (
+                  <option value="">Loading Panchayats...</option>
+                ) : villages.length > 0 ? (
+                  villages.map(v => (
+                    <option key={v._id} value={v._id}>{v.name} ({v.district})</option>
+                  ))
+                ) : (
+                  <option value="">No Panchayats registered</option>
+                )}
               </select>
             </div>
           </div>
 
           {/* Row 5: Password */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Security Password</label>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Password</label>
             <input 
               type="password" 
               name="password"
-              className="w-full px-3.5 py-2.5 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-655 focus:outline-none focus:border-blue-500" 
+              className="w-full px-3.5 py-2.5 border border-slate-800 rounded-lg text-xs bg-slate-950/70 text-slate-100 font-medium placeholder-slate-600 focus:outline-none focus:border-blue-500" 
               placeholder="••••••••"
               value={form.password}
               onChange={handleChange}
@@ -175,13 +204,13 @@ export default function RegisterModal({ isOpen, onClose, onSubmit }) {
             />
           </div>
 
-          {/* Verification Warning Banner */}
+          {/* Verification Banner */}
           <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/60 flex items-start gap-2.5">
             <svg className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
             <p className="text-[9px] text-slate-400 leading-relaxed">
-              Auditor signatures submit to <code className="bg-slate-900 px-1 py-0.5 rounded text-blue-400 border border-slate-800 font-bold">POST /api/auth/register</code>. Aadhaar values are processed via Verhoeff verification and cryptographically pepper-hashed before write.
+              Verhoeff identity checksum verified locally. Plaintext Aadhaar is never saved; deterministically hashed with SHA-256 HMAC for cryptographic privacy.
             </p>
           </div>
 

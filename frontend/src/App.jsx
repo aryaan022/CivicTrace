@@ -10,6 +10,7 @@ import LoginModal from './components/homepage/LoginModal';
 import RegisterModal from './components/homepage/RegisterModal';
 import CitizenDashboard from './components/Userdashboard/Dashboard';
 import VillageHeadDashboard from './components/VillageHeadDashboard/Dashboard';
+import AdminDashboard from './components/AdminDashboard/Dashboard';
 
 function App() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -46,7 +47,6 @@ function App() {
       })
       .catch(err => {
         console.error("Session refresh error:", err);
-        // Clear expired tokens automatically
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setToken(null);
@@ -80,36 +80,19 @@ function App() {
 
   const handleRegisterSubmit = async (registerForm) => {
     try {
-      // Force role option constraint to match backend citizen-only registration rule
-      const registerPayload = { ...registerForm, role: "Citizen" };
-
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registerPayload)
+        body: JSON.stringify(registerForm)
       });
       const data = await response.json();
       if (response.ok) {
         alert("Registration successful! Logging you in...");
         localStorage.setItem("token", data.token);
-        
-        // Retrieve profile details to complete frontend user session initialization
-        const profileRes = await fetch("/api/user/dashboard", {
-          headers: {
-            "Authorization": `Bearer ${data.token}`
-          }
-        });
-        const profileData = await profileRes.json();
-        if (profileRes.ok) {
-          localStorage.setItem("user", JSON.stringify(profileData.user));
-          setToken(data.token);
-          setUser(profileData.user);
-          setIsRegisterOpen(false);
-        } else {
-          alert("Auto-login failed. Please sign in manually.");
-          setIsRegisterOpen(false);
-          setIsLoginOpen(true);
-        }
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
+        setIsRegisterOpen(false);
       } else {
         alert(data.message || "Registration failed");
       }
@@ -138,7 +121,9 @@ function App() {
       />
 
       {user ? (
-        user.role === "VillageHead" ? (
+        user.role === "Admin" ? (
+          <AdminDashboard user={user} onLogout={handleLogout} />
+        ) : user.role === "VillageHead" ? (
           <VillageHeadDashboard user={user} onLogout={handleLogout} />
         ) : (
           <CitizenDashboard user={user} onLogout={handleLogout} />

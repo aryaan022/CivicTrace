@@ -19,9 +19,9 @@ export default function Dashboard({ user, onLogout }) {
   });
 
   // Fetch real data from the backend APIs
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isBackground = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) setLoading(true);
       // Fetch projects in the user's village
       const projectsRes = await fetch("/api/user/projects", {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
@@ -84,13 +84,20 @@ export default function Dashboard({ user, onLogout }) {
     } catch (err) {
       console.error("Dashboard fetch error:", err);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
+
+      // Real-time multi-user live polling sync
+      const interval = setInterval(() => {
+        fetchDashboardData(true);
+      }, 5000);
+
+      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -105,7 +112,7 @@ export default function Dashboard({ user, onLogout }) {
       });
       if (response.ok) {
         // Real-time synchronization of state from server
-        fetchDashboardData();
+        fetchDashboardData(true);
       } else {
         const data = await response.json();
         alert(data.message || "Failed to record vote");
@@ -140,7 +147,7 @@ export default function Dashboard({ user, onLogout }) {
       const data = await response.json();
       if (response.ok) {
         alert("Dispute submitted successfully!");
-        fetchDashboardData();
+        fetchDashboardData(true);
         
         // Reset form details
         setNewDispute(prev => ({

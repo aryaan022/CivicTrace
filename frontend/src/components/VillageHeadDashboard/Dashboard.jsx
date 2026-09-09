@@ -9,39 +9,33 @@ export default function Dashboard({ user, onLogout }) {
   const [projects, setProjects] = useState([]);
   const [disputes, setDisputes] = useState([]);
   const [registeredCitizensCount, setRegisteredCitizensCount] = useState(0);
+  const [villageInfo, setVillageInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch village projects, disputes, and citizen count from the server
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isBackground = false) => {
     try {
-      setLoading(true);
-      // Fetch projects
-      const projectsRes = await fetch("/api/user/projects", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-      });
-      const projectsData = await projectsRes.json();
+      if (!isBackground) setLoading(true);
+      const token = localStorage.getItem("token");
+      const headers = { "Authorization": `Bearer ${token}` };
 
-      // Fetch disputes (tickets)
-      const ticketsRes = await fetch("/api/user/tickets", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-      });
+      // Fetch village info, projects, and disputes in parallel
+      const [villageRes, projectsRes, ticketsRes] = await Promise.all([
+        fetch("/api/village/my-village", { headers }),
+        fetch("/api/village/projects", { headers }),
+        fetch("/api/village/tickets", { headers })
+      ]);
+
+      const villageData = await villageRes.json();
+      const projectsData = await projectsRes.json();
       const ticketsData = await ticketsRes.json();
 
-      // Fetch fresh profile data to get the updated citizen count from their village
-      const profileRes = await fetch("/api/user/dashboard", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-      });
-      const profileData = await profileRes.json();
-
-      if (profileRes.ok && profileData.user?.village) {
-        // Query village details specifically to fetch the registeredCitizensCount
-        // To keep logic simple in the dashboard, we can calculate total citizens or fetch it.
-        // We'll mock a default or set the count if we retrieve it.
-        setRegisteredCitizensCount(12); // Default mock for audit presentation if database is unseeded, else we will fetch
+      if (villageRes.ok && villageData.village) {
+        setVillageInfo(villageData.village);
+        setRegisteredCitizensCount(villageData.village.registeredCitizensCount || 0);
       }
 
       if (projectsRes.ok) {
-        // Map database schemas to frontend format
         const formattedProjects = (projectsData.projects || []).map(p => ({
           id: p._id,
           title: p.title,
@@ -75,12 +69,19 @@ export default function Dashboard({ user, onLogout }) {
     } catch (err) {
       console.error("Village Head dashboard retrieval error:", err);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Real-time live synchronization polling
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Upload proof of work PUT request to the backend
@@ -96,8 +97,8 @@ export default function Dashboard({ user, onLogout }) {
       });
       const data = await response.json();
       if (response.ok) {
-        alert("Milestone proof submitted successfully! Citizens can now audit it.");
-        fetchDashboardData(); // Reload stats
+        alert("Milestone proof submitted successfully! Citizens and Admins can now audit it.");
+        fetchDashboardData(true);
         return true;
       } else {
         alert(data.message || "Failed to upload proof");
@@ -123,14 +124,13 @@ export default function Dashboard({ user, onLogout }) {
     return (
       <div className="flex-1 flex justify-center items-center bg-[#0b0f19] text-slate-400 text-xs uppercase tracking-widest min-h-[400px]">
         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-2.5"></span>
-        Syncing Sarpanch Console...
+        Syncing Sarpanch Console ({villageInfo?.name || 'Local Panchayat'})...
       </div>
     );
   }
 
   return (
     <div className="flex-1 flex flex-col md:flex-row bg-[#0b0f19] text-slate-100 max-w-6xl w-full mx-auto p-4 md:p-6 gap-6 relative z-10">
-      
       {/* Sidebar Component */}
       <Sidebar 
         user={user}
@@ -141,7 +141,6 @@ export default function Dashboard({ user, onLogout }) {
 
       {/* Main Panel */}
       <main className="flex-1 bg-slate-900 border border-slate-800 p-5 md:p-6 rounded-2xl shadow-lg min-h-[500px]">
-        
         {activeTab === 'overview' && (
           <Overview 
             totalBudget={totalBudget}
@@ -166,9 +165,7 @@ export default function Dashboard({ user, onLogout }) {
             registeredCitizensCount={registeredCitizensCount}
           />
         )}
-
       </main>
-
     </div>
   );
 }
