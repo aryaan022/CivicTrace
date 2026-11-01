@@ -66,6 +66,10 @@ app.get("/api/protected", isLoggedIn, (req, res) => {
     res.json({ message: "You are protected", user: req.user });
 });
 
+
+
+
+
 app.listen(PORT, () => {
     console.log(`CivicTrace Server is running on port ${PORT}`);
 });
